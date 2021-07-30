@@ -1,0 +1,37 @@
+#!/bin/bash
+export TERM=xterm-256color
+let upSeconds="$(/usr/bin/cut -d. -f1 /proc/uptime)"
+let secs=$((${upSeconds}%60))
+let mins=$((${upSeconds}/60%60))
+let hours=$((${upSeconds}/3600%24))
+let days=$((${upSeconds}/86400))
+UPTIME=`printf "%d days, %02dh %02dm %02ds" "$days" "$hours" "$mins" "$secs"`
+
+# get the load averages read one five fifteen
+read one five fifteen rest < /proc/loadavg
+
+cpu_temp0=$(cat /sys/class/thermal/thermal_zone0/temp)
+cpu_temp1=$(($cpu_temp0/1000))
+cpu_temp2=$(($cpu_temp0/100))
+cpu_tempM=$(($cpu_temp2 % $cpu_temp1))
+cpu_temp0="${cpu_temp1}.${cpu_tempM}"
+
+gpu_temp0=$(/opt/vc/bin/vcgencmd measure_temp)
+gpu_temp0=${gpu_temp0//\'C/}
+gpu_temp0=${gpu_temp0//temp=/}
+
+echo
+echo -n "  System information as of "
+/bin/date
+echo -n "  "
+uname -snrmo
+echo
+echo "  Uptime: ${UPTIME}
+  Temperatures: CPU: ${cpu_temp0}ºC; GPU: ${gpu_temp0}ºC
+  Memory: `cat /proc/meminfo | grep MemFree | awk {'print $2'}`kB (Free) / `cat /proc/meminfo | grep MemTotal | awk {'print $2'}`kB (Total)
+  Load Averages: ${one}, ${five}, ${fifteen} (1, 5, 15 min)
+  Running Processes: `ps ax | wc -l | tr -d " "`
+  Free Disk Space: `df -Pk | grep -E '^/dev/root' | awk '{ print $4 }'`k (`df -Pk | grep -E '^/dev/root' | awk '{ print $5 }'` used) on /dev/root"
+
+ip -4 -o addr | awk '!/^[0-9]*: ?lo|link\/ether/ {print "  IP address of "$2": "$4}'
+echo
